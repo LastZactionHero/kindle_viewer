@@ -1,0 +1,82 @@
+<html>
+  <head>
+  </head>
+  <body style="margin: 0px;">
+    <canvas id='display' width="600" height="700">
+    </canvas>
+
+    <script type='application/javascript'>
+      const canvasWidth = 600;
+      const canvasHeight = 700;
+      const screenWidth = 1920;
+      const screenHeight = 1080;
+      var firstRun = true;
+
+      function scheduleRefresh() {
+        setTimeout(refresh, 2000);
+      }
+
+      function refresh() {
+        if(firstRun) {
+          loadAndRender()
+        } else {        
+          var request = new XMLHttpRequest();
+          request.open('GET', '/image_changed', true);
+          
+          request.onload = function() {
+            if (request.status == 200) {
+              var resp = request.responseText;
+              if(resp == "{\"changed\":true}") { // Kindle didn't seem to support JSON.parse
+                loadAndRender();
+              } else {
+                scheduleRefresh();
+              }
+            } else {
+              scheduleRefresh();       
+            }
+          }
+          
+          request.onerror = function() {
+            scheduleRefresh();
+          };          
+          request.send();
+        }
+      }
+
+      function loadAndRender() {
+        const canvas = document.getElementById('display');
+        canvas.style.height = canvasHeight;
+        canvas.style.width = canvasWidth;
+        var ctx = canvas.getContext("2d");
+
+        ctx.beginPath();
+        ctx.rect(0, 0, canvasWidth, canvasHeight);
+        ctx.fillStyle = 'black';
+        ctx.fill();
+
+        ctx.save();
+        ctx.translate(canvas.width,0);
+        ctx.rotate(90*Math.PI/180);
+
+        const image = new Image();
+        image.onload = function() {
+          var ratio = 1;
+          var width = screenWidth / ratio;
+          var height = screenHeight / ratio;
+
+          var yOffset = -40; // Remove the menu bar
+
+          ctx.drawImage(image, 0, yOffset, width, height)
+          ctx.restore();
+          firstRun = false;
+          scheduleRefresh();
+        }
+
+        image.src = '/capture.png?d=' + Math.floor(Math.random() * 100000);
+      }
+
+      refresh();
+    </script>
+  </body>
+</html>
+
